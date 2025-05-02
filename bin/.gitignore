@@ -1,2 +1,4 @@
 test
 client
+worker/main.go
+coordinator/main.go
