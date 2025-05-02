@@ -5,13 +5,13 @@
 
 **Система распределённой сборки с поддержкой двух режимов работы: CLI и библиотеки**
 
-
 ## Особенности
 **Использование как CLI-утилиты или embedded-библиотеки**
 
 ## Способы использования
 
-### 1. Как консольная утилита
+### 1. Как консольная утилита (сложно, так как придется разбираться как работает скачивание файлов на координатора)
+
 ```bash
 # Запуск координатора с кастомным портом
 ./distbuild coordinator --port=9090 --log-level=debug
@@ -25,9 +25,59 @@
 curl -X POST http://localhost:9090/build \
   -H "Content-Type: application/json" \
   -d @pipeline.json
+
+# скачивание необходимых файлов на координатора
+TODO
+
+# Сигнал координатору (сигнал о том что все необходимые файлы скачаны на координатора)
+curl -X POST http://localhost:9090/signal?build_id=12345
 ```
 
 ### 2. Как библиотека
+
+Только клиентская часть (оптимально)
+
+```bash
+# Запуск координатора
+./distbuild coordinator --port=9090 --log-level=error
+
+# Подключение воркера к кластеру
+./distbuild worker \
+  --coordinator=localhost:9090 \
+```
+
+```go
+package main
+
+import (
+  "gitlab.com/justnurik/distbuild/pkg/api"
+  "gitlab.com/justnurik/distbuild/pkg/client"
+)
+
+func main() {
+  cfg := client.Config{Endpoint: "http://localhost:8080"}
+  cli := client.New(cfg)
+  
+  buildReq := api.BuildRequest{
+    Jobs: []api.Job{
+      {
+        Name:   "test",
+        Cmds:   []string{"go test ./..."},
+        Inputs: []string{"*.go"},
+      },
+    },
+  }
+
+  // тут lsn - реализация интерфейса BuildListner (смотреть пакет client)
+  statusCh, err := cli.StartBuild(context.Background(), buildReq, &lsn{})
+  for status := range statusCh {
+    fmt.Printf("Progress: %d%%\n", status.Progress)
+  }
+}
+```
+
+Вся система (тоже не плохо, только придется понять api соответсвующих паккетов)
+
 ```go
 import (
   "gitlab.com/justnurik/distbuild/pkg/dist"
@@ -47,7 +97,7 @@ func main() {
   router := http.NewServeMux()
   router.Handle("/coordinator/", http.StripPrefix("/coordinator", coordinator))
 
-  go htpp.ListenAndServe(":8080", router)
+  go htpp.ListenAndServe(":8080", router) // плохо так делать, но как пример сойдет 
 
 
   // ----------------- Запуск воркера -----------------
@@ -60,11 +110,12 @@ func main() {
   router := http.NewServeMux()
   router.Handle(fmt.Sprintf("/worker/%s/", a.id), http.StripPrefix("/worker/"+a.id, worker))
 
-  go htpp.ListenAndServe(":6029", router)
+  go htpp.ListenAndServe(":6029", router) // плохо так делать, но как пример сойдет 
 
 
   // ----------------- Запуск сборки -----------------
-  if err := client.Build(context.TODO(), buildGraph); err != nil {
+  // тут lsn - реализация интерфейса BuildListner (смотреть пакет client)
+  if err := client.Build(context.TODO(), buildGraph, &lsn{}); err != nil {
     log.Fatal(err)
   }
 }
@@ -80,7 +131,7 @@ func main() {
 - Логирование
 
 ### Планируемые задачи
-- [ ] использование websocket-ов вместо постоянных flush-ов со стороны координатора
+- [ ] Переход на WebSocket для /build эндпоинта
 - [ ] написать более эффективный планировщик
 - [ ] большее интеграционных тестов
 - [ ] покрытие тестами >= 90%
@@ -88,15 +139,15 @@ func main() {
 
 ## Архитектура системы
 ```
-                       +---------------------+
-                       |      Клиент         |
-                       | (Отправка графа     |
-                       |  сборки, запросы)   |
-                       +---------------------+
-                                  ^
-                                  |
-                                  | HTTP/WebSocket
-                                  v
+                   +---------------------+
+                   |      Клиент         |
+                   | (Отправка графа     |
+                   |  сборки, запросы)   |
+                   +---------------------+
+                              ^
+                              |
+                              | HTTP/WebSocket
+                              v
 +-----------------------------------------------------------------+
 |                      Координатор                                |
 | +---------------------+       +---------------------+           |
@@ -133,8 +184,8 @@ func main() {
 +---------------------+ +---------------------+ +--------------------+
 ```
 
-## Лицензия ⚖️
-Проект распространяется под лицензией [MIT](LICENSE). Коммерческое использование разрешено с указанием авторства.
+## Лицензия
+Проект распространяется под лицензией [MIT](LICENSE). 
 
 ---
 
