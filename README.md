@@ -37,7 +37,7 @@ import (
 
 func main() {
   // ----------------- Инициализация координатора -----------------
-	cache, _ := filecache.New("./cache")
+  cache, _ := filecache.New("./cache")
   coord := dist.NewCoordinator(
     zap.NewProductionConfig()
     core.WithCacheDir("/opt/distbuild/cache"),
@@ -45,30 +45,30 @@ func main() {
   defer coordinator.Stop()
 
   router := http.NewServeMux()
-	router.Handle("/coordinator/", http.StripPrefix("/coordinator", coordinator))
-  
-	go htpp.ListenAndServe(":8080", router)
+  router.Handle("/coordinator/", http.StripPrefix("/coordinator", coordinator))
 
-  
+  go htpp.ListenAndServe(":8080", router)
+
+
   // ----------------- Запуск воркера -----------------
   fileCache, _ := filecache.New(a.fileCachePath)
-	artifacts, _ := artifact.NewCache(a.artifactCachePath)
+  artifacts, _ := artifact.NewCache(a.artifactCachePath)
 
-	endpoint := fmt.Sprintf("%s/worker/0", addr)
-	worker := worker.New(api.WorkerID(endpoint), a.coordinatorEndpoint, logger, fileCache, artifacts)
+  endpoint := fmt.Sprintf("%s/worker/0", addr)
+  worker := worker.New(api.WorkerID(endpoint), a.coordinatorEndpoint, logger, fileCache, artifacts)
 
-	router := http.NewServeMux()
-	router.Handle(fmt.Sprintf("/worker/%s/", a.id), http.StripPrefix("/worker/"+a.id, worker))
-  
+  router := http.NewServeMux()
+  router.Handle(fmt.Sprintf("/worker/%s/", a.id), http.StripPrefix("/worker/"+a.id, worker))
+
   go htpp.ListenAndServe(":6029", router)
 
-  
+
   // ----------------- Запуск сборки -----------------
   result := client.StartBuild(context.TODO(), buildGraph)
 }
 ```
-## Архитектура системы
 
+## Архитектура системы
 ```
                        +---------------------+
                        |      Клиент         |
