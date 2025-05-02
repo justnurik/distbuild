@@ -64,7 +64,9 @@ func main() {
 
 
   // ----------------- Запуск сборки -----------------
-  result := client.StartBuild(context.TODO(), buildGraph)
+  if err := client.Build(context.TODO(), buildGraph); err != nil {
+    log.Fatal(err)
+  }
 }
 ```
 
