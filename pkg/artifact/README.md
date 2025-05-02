@@ -18,7 +18,34 @@
 `*artifact.Handler`  один метод `GET /artifact?id=1234`. Хендлер отвечает на
 запрос содержимым артефакта в формате `tarstream`.
 
-Функция `Download` должна скачивать артефакт из удалённого кеша в локальный.
+Функция `Download` скачивает артефакт из удалённого кеша в локальный.
 
-Обратите внимание, что конструктор хендлера принимает `*zap.Logger`. Запишите в этот логгер интересные события,
-это поможет при отладке в следующих частях задачи.
+## Использование
+
+### Инициализация
+```go
+cache := artifact.NewCache("/storage/path", zap.NewNop())
+handler := artifact.NewHandler(cache, zap.L())
+```
+
+### Пример записи
+```go
+w, err := cache.Create(ctx, id)
+if err != nil { ... }
+
+// Запись данных в io.Writer
+_, _ = w.Write([]byte("data"))
+
+// Фиксация
+if err := cache.Commit(ctx, id); err != nil { ... }
+```
+
+### Пример скачивания
+```go
+err := artifact.Download(
+    ctx,
+    "http://remote-worker:8080/artifact?id=123",
+    localCache,
+    artifact.ID{0x12, 0x34},
+)
+```
