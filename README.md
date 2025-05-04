@@ -55,22 +55,28 @@ import (
 )
 
 func main() {
-  client := client.NewClient(zap.NewProductionConfig(), "localhost:9090", ".")
-  
-  buildReq := api.BuildRequest{
-    Jobs: []api.Job{
-      {
-        Name:   "test",
-        Cmds:   []string{"go test ./..."},
-        Inputs: []string{"*.go"},
-      },
-    },
-  }
+	logger, _ := zap.NewProduction()
+	client := client.NewClient(logger, "localhost:9090", ".")
 
-  // тут lsn - реализация интерфейса BuildListner (смотреть пакет client)
-  if err := client.Build(context.Background(), buildReq, &lsn{}); err != nil {
-    log.Fatal(err)
-  }
+	graph := build.Graph{
+		SourceFiles: map[build.ID]string{
+			{'a'}: "../../src/main.go",
+		},
+		Jobs: []build.Job{
+			{
+				Name: "test",
+				Cmds: []build.Cmd{{
+					Exec: []string{"go test {{.SourceDir}}/main.go"},
+				}},
+				Inputs: []string{"main.go"},
+			},
+		},
+	}
+
+	// тут lsn - реализация интерфейса BuildListner (смотреть пакет client)
+	if err := client.Build(context.Background(), graph, &lsn{}); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
 
@@ -85,39 +91,61 @@ import (
 
 func main() {
   // ----------------- Инициализация координатора -----------------
-  cache, _ := filecache.New("./cache")
-  coord := dist.NewCoordinator(
-    zap.NewProductionConfig()
-    core.WithCacheDir("/opt/distbuild/cache"),
-  )
-  defer coordinator.Stop()
+	logger, _ := zap.NewProduction()
+	cache, _ := filecache.New("coordinator/filecache")
+	coord := dist.NewCoordinator(logger, cache)
+	defer coord.Stop()
 
-  router := http.NewServeMux()
-  router.Handle("/coordinator/", http.StripPrefix("/coordinator", coordinator))
+	router := http.NewServeMux()
+	router.Handle("/coordinator/", http.StripPrefix("/coordinator", coord))
 
-  go htpp.ListenAndServe(":8080", router) // плохо так делать, но как пример сойдет 
-
+	// плохо так делать, но как пример сойдет
+	go func() {
+		if err := http.ListenAndServe(":8080", router); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
   // ----------------- Запуск воркера -----------------
-  fileCache, _ := filecache.New(a.fileCachePath)
-  artifacts, _ := artifact.NewCache(a.artifactCachePath)
+	fileCache, _ := filecache.New("worker/0/filecache")
+	artifacts, _ := artifact.NewCache("worker/0/artifacts")
 
-  endpoint := fmt.Sprintf("%s/worker/0", addr)
-  worker := worker.New(api.WorkerID(endpoint), "localhost:9090", zap.NewProductionConfig(), fileCache, artifacts)
+	endpointWorker := fmt.Sprintf("%s/worker/0", "localhost:6029")
+	worker := worker.New(api.WorkerID(endpointWorker), endpointCoord, loggerWorker, fileCache, artifacts)
 
-  router := http.NewServeMux()
-  router.Handle(fmt.Sprintf("/worker/%s/", a.id), http.StripPrefix("/worker/"+a.id, worker))
+	routerWorker := http.NewServeMux()
+	routerWorker.Handle(endpointWorker, http.StripPrefix(endpointWorker, worker))
 
-  go htpp.ListenAndServe(":6029", router) // плохо так делать, но как пример сойдет 
-
+	// плохо так делать, но как пример сойдет
+	go func() {
+		if err := http.ListenAndServe(":6029", routerWorker); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
   // ----------------- Запуск сборки -----------------
-  client := client.NewClient(zap.NewProductionConfig(), "localhost:9090", ".")
+	loggerClient, _ := zap.NewProduction()
+	client := client.NewClient(loggerClient, "", ".")
 
-  // тут lsn - реализация интерфейса BuildListner (смотреть пакет client)
-  if err := client.Build(context.TODO(), buildGraph, &lsn{}); err != nil {
-    log.Fatal(err)
-  }
+	graph := build.Graph{
+		SourceFiles: map[build.ID]string{
+			{'a'}: "../../src/main.go",
+		},
+		Jobs: []build.Job{
+			{
+				Name: "test",
+				Cmds: []build.Cmd{{
+					Exec: []string{"go test {{.SourceDir}}/main.go"},
+				}},
+				Inputs: []string{"main.go"},
+			},
+		},
+	}
+
+	// тут lsn - реализация интерфейса BuildListner (смотреть пакет client)
+	if err := client.Build(context.TODO(), graph, &lsn{}); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
 
