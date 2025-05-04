@@ -58,8 +58,7 @@ import (
 )
 
 func main() {
-  cfg := client.Config{Endpoint: "http://localhost:8080"}
-  cli := client.New(cfg)
+  client := client.NewClient(zap.NewProductionConfig(), "localhost:9090", ".")
   
   buildReq := api.BuildRequest{
     Jobs: []api.Job{
@@ -72,9 +71,8 @@ func main() {
   }
 
   // тут lsn - реализация интерфейса BuildListner (смотреть пакет client)
-  statusCh, err := cli.StartBuild(context.Background(), buildReq, &lsn{})
-  for status := range statusCh {
-    fmt.Printf("Progress: %d%%\n", status.Progress)
+  if err := client.Build(context.Background(), buildReq, &lsn{}); err != nil {
+    log.Fatal(err)
   }
 }
 ```
@@ -108,7 +106,7 @@ func main() {
   artifacts, _ := artifact.NewCache(a.artifactCachePath)
 
   endpoint := fmt.Sprintf("%s/worker/0", addr)
-  worker := worker.New(api.WorkerID(endpoint), a.coordinatorEndpoint, logger, fileCache, artifacts)
+  worker := worker.New(api.WorkerID(endpoint), "localhost:9090", zap.NewProductionConfig(), fileCache, artifacts)
 
   router := http.NewServeMux()
   router.Handle(fmt.Sprintf("/worker/%s/", a.id), http.StripPrefix("/worker/"+a.id, worker))
@@ -117,6 +115,8 @@ func main() {
 
 
   // ----------------- Запуск сборки -----------------
+  client := client.NewClient(zap.NewProductionConfig(), "localhost:9090", ".")
+
   // тут lsn - реализация интерфейса BuildListner (смотреть пакет client)
   if err := client.Build(context.TODO(), buildGraph, &lsn{}); err != nil {
     log.Fatal(err)
