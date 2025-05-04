@@ -22,13 +22,13 @@
 
 ## Использование
 
-### Инициализация
+Инициализация
 ```go
 cache := artifact.NewCache("/storage/path", zap.NewNop())
 handler := artifact.NewHandler(cache, zap.L())
 ```
 
-### Пример записи
+Пример записи
 ```go
 w, err := cache.Create(ctx, id)
 if err != nil { ... }
@@ -40,7 +40,7 @@ _, _ = w.Write([]byte("data"))
 if err := cache.Commit(ctx, id); err != nil { ... }
 ```
 
-### Пример скачивания
+Пример скачивания
 ```go
 err := artifact.Download(
     ctx,
