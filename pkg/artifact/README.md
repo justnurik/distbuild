@@ -24,17 +24,17 @@
 
 Инициализация
 ```go
-cache := artifact.NewCache("/storage/path", zap.NewNop())
-handler := artifact.NewHandler(cache, zap.L())
+cache, err := artifact.NewCache("/storage/path")
+if err != nil { ... }
+handler := artifact.NewHandler(logger, cache)
 ```
 
-Пример записи
+Пример создания
 ```go
-w, err := cache.Create(ctx, id)
+path, commit, abort, err := cache.Create(id)
 if err != nil { ... }
 
-// Запись данных в io.Writer
-_, _ = w.Write([]byte("data"))
+// что-то делаем с path
 
 // Фиксация
 if err := cache.Commit(ctx, id); err != nil { ... }
@@ -44,8 +44,8 @@ if err := cache.Commit(ctx, id); err != nil { ... }
 ```go
 err := artifact.Download(
     ctx,
-    "http://remote-worker:8080/artifact?id=123",
+    "http://remote-worker:8080",
     localCache,
-    artifact.ID{0x12, 0x34},
+    artifactID,
 )
 ```
