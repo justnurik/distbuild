@@ -90,7 +90,7 @@ import (
 )
 
 func main() {
-  // ----------------- Инициализация координатора -----------------
+  	// ----------------- Инициализация координатора -----------------
 	logger, _ := zap.NewProduction()
 	cache, _ := filecache.New("coordinator/filecache")
 	coord := dist.NewCoordinator(logger, cache)
@@ -106,7 +106,7 @@ func main() {
 		}
 	}()
 
-  // ----------------- Запуск воркера -----------------
+  	// ----------------- Запуск воркера -----------------
 	fileCache, _ := filecache.New("worker/0/filecache")
 	artifacts, _ := artifact.NewCache("worker/0/artifacts")
 
@@ -123,7 +123,7 @@ func main() {
 		}
 	}()
 
-  // ----------------- Запуск сборки -----------------
+  	// ----------------- Запуск сборки -----------------
 	loggerClient, _ := zap.NewProduction()
 	client := client.NewClient(loggerClient, "", ".")
 
